@@ -1,0 +1,285 @@
+{
+  "name": "Compare PDFs",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "mimeType"
+            },
+            {
+              "name": "id"
+            },
+            {
+              "name": "name"
+            },
+            {
+              "name": "standard"
+            }
+          ]
+        }
+      },
+      "id": "c1c64645-d1c5-4320-af78-9c707e037b9b",
+      "typeVersion": 1.1,
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "position": [
+        -32,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "modelId": {
+          "__rl": true,
+          "value": "claude-sonnet-4-6",
+          "mode": "list",
+          "cachedResultName": "claude-sonnet-4-6"
+        },
+        "text": "=Compare these two roast profiles and treat standard.pdf file as a standard one. Extract coffee origin name and batch id (whole name of the file convert this way - e.g. '2.26-03-16 Brasil Cerrado 20kg' to '2.BC-26/03/16') from {{ $json.name }}. Give similarity marks using scale from 0 to 10 in such dimensions: Charge Temp, RoR Curve, First Crack, Roast Time, DTR. Get information about: charge temperature, temperature of first crack, roast duration and DTR percentage from both files (get ONLY these parameters - nothing more, nothing less). Look at the {{ $json.name }} file name and create two categories: RoR Crash and RoR Flick - give them \"Yes\" if an anomaly name occured in file name or \"No\" if didn't. Give an answer in plain JSON. Do not add your commentary under any circumstances. The coffee origin name, batch_id and the parameters are the only things that matter in your task.",
+        "inputType": "binary",
+        "binaryPropertyName": "={{ \"data1\" }}, {{ \"data2\" }}",
+        "options": {
+          "maxTokens": 4096
+        }
+      },
+      "id": "825d0e54-118f-4a79-aead-b0c17bc60a51",
+      "name": "Analyze PDF with Anthropic",
+      "type": "@n8n/n8n-nodes-langchain.anthropic",
+      "typeVersion": 1,
+      "position": [
+        944,
+        336
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "anthropicApi": {
+          "id": "tbWdAXHt7Soar3yv",
+          "name": "Anthropic account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "5bfeadbc-157c-48d0-8380-e3567b6a7367",
+      "name": "Loop Over PDFs",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        192,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {
+          "binaryPropertyName": "data1",
+          "fileName": "={{ $json.name }}"
+        }
+      },
+      "id": "01667e99-59eb-4ad1-a5e0-f59dd96f8bb4",
+      "name": "Download PDF from Google Drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        480,
+        336
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "OGuqybB3vJpx66kp",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $('When Executed by Another Workflow').item.json.standard }}",
+          "mode": "id"
+        },
+        "options": {
+          "binaryPropertyName": "data2",
+          "fileName": "standard.pdf"
+        }
+      },
+      "id": "b8c6b7a8-127d-4bd8-a296-014c1db6f67a",
+      "name": "Download Standard PDF from Google Drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        720,
+        336
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "OGuqybB3vJpx66kp",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "afbcd880-cb4b-418b-836e-b20605411bd4",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        368,
+        176
+      ],
+      "id": "6dc2440d-2d6a-48cf-9c6e-0679ce7c120e",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        640,
+        160
+      ],
+      "id": "22e06e33-dea2-4625-963e-cb6b2c545489",
+      "name": "Edit Fields"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Loop Over PDFs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze PDF with Anthropic": {
+      "main": [
+        [
+          {
+            "node": "Loop Over PDFs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over PDFs": {
+      "main": [
+        [],
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download PDF from Google Drive": {
+      "main": [
+        [
+          {
+            "node": "Download Standard PDF from Google Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Standard PDF from Google Drive": {
+      "main": [
+        [
+          {
+            "node": "Analyze PDF with Anthropic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Download PDF from Google Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Loop Over PDFs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "c810e3a1-f408-445f-a189-fdea794f4218",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "7a01796333966a3620529315aa952d5aa65747b585c38da71e80c8905632ba26"
+  },
+  "nodeGroups": [],
+  "id": "kUVriXPgRApckn4v",
+  "tags": []
+}

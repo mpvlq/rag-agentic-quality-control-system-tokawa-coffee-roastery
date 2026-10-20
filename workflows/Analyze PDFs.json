@@ -1,0 +1,1085 @@
+{
+  "name": "Analyze PDFs",
+  "nodes": [
+    {
+      "parameters": {
+        "mode": "insert",
+        "pineconeIndex": {
+          "__rl": true,
+          "value": "tokawa-rag",
+          "mode": "list",
+          "cachedResultName": "tokawa-rag"
+        },
+        "options": {
+          "clearNamespace": false
+        }
+      },
+      "id": "34971cbb-0746-49b4-a86f-a3e266e5ed1a",
+      "name": "Pinecone Vector Store",
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+      "position": [
+        1408,
+        0
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "pineconeApi": {
+          "id": "gs33VLQ0qIF5QKaT",
+          "name": "Pinecone account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chunkSize": 1800,
+        "chunkOverlap": 250,
+        "options": {}
+      },
+      "id": "a9b68e7c-b9b0-4f7f-b136-728ad8d940e6",
+      "name": "Recursive Character Text Splitter",
+      "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+      "position": [
+        1504,
+        320
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {},
+      "id": "adb53bb3-aa87-4031-85e2-6968ba516bd4",
+      "name": "Loop Complete",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -960,
+        -48
+      ]
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "analysis",
+        "options": {
+          "includeBinaries": true,
+          "keepOnlyUnique": false
+        }
+      },
+      "id": "0b760d69-5b77-4744-9edf-2a509b566d34",
+      "name": "Aggregate Analysis Results",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        -720,
+        -48
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ \"Generate a comprehensive PDF report for ToKawa specialty coffee roastery based on these roast analyses: \" + JSON.stringify($json.analysis) + \". Format the report as HTML matching the style of the reference styles:\" + JSON.stringify($('Styles To JSON').item.json.styles) + \"and structure of the reference structure:\" + JSON.stringify($('Structure To JSON').item.json.structure) + \" . Each coffee origin has to have ONLY ONE SECTION in the report. Use \" + $now.toFormat('LLLL dd, yyyy') + \" as a date of creation of the report. Use proper batch_id data. Include all analysis data with clear, provided in reference visual formatting. Don't wrap your output in '```html ```'. YOUR RESPONSE MUST START WITH '<'. THE VERY FIRST CHARACTER OF YOUR OUTPUT MUST BE '<'. ANY OUTPUT THAT DOES NOT START WITH '<' IS A FAILED RESPONSE.\" }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=You are a data visualization specialist creating professional reports for ToKawa specialty coffee roastery. Generate well-formatted HTML reports based on roast analysis data, matching the style and structure of reference templates provided.\n\nYou will receive data for several coffee origins.\nYou MUST process ALL GIVEN origins before writing any conclusion.\n\nRules:\n- After each section, immediately continue to the next\n- Do NOT write \"In conclusion\" or any closing statement until the last origin is complete\n- Do not summarize or skip any fields\n- Do not stop mid-report for any reason\n\nCRITICAL OUTPUT RULE:\nYour response must begin with the very first character of HTML — either `<!DOCTYPE` or `<`.\nIf you find yourself about to write any word that is not an HTML tag, STOP and start over with `<`.\nNo exceptions. Not even one word before the HTML.",
+          "returnIntermediateSteps": true,
+          "passthroughBinaryImages": true,
+          "autoSaveHighlightedData": false
+        }
+      },
+      "id": "a76ff92e-c261-4d58-8006-21aa744f8cea",
+      "name": "Generate Report with AI",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -480,
+        -304
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "claude-opus-4-6",
+          "mode": "list",
+          "cachedResultName": "Claude Opus 4.6"
+        },
+        "options": {
+          "maxTokensToSample": 16000
+        }
+      },
+      "id": "8eab25b9-57b2-4f6c-92a6-4744dc1b1754",
+      "name": "Report Generation Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.5,
+      "position": [
+        -272,
+        -48
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "tbWdAXHt7Soar3yv",
+          "name": "Anthropic account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "html": "{{ $json.output }}"
+      },
+      "id": "35b88f7f-40a0-4ef2-9dea-f4bbfb192b09",
+      "name": "Generate HTML Report",
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        496,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "maciej.piotr.pulka@gmail.com, blasen00@pm.me",
+        "subject": "ToKawa Roastery - Comprehensive Roast Analysis Report",
+        "message": "=Raport za okres od {{ $now.minus({ days: 7 }).toFormat('yyyy-MM-dd') }} do {{ $now.toFormat('yyyy-MM-dd') }}",
+        "options": {
+          "attachmentsUi": {
+            "attachmentsBinary": [
+              {}
+            ]
+          }
+        }
+      },
+      "id": "3f367278-bb93-468e-99c3-38af8b779ea4",
+      "name": "Send Report via Gmail",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1424,
+        -320
+      ],
+      "webhookId": "410e1e00-8fbe-4126-b592-e3b2fce3c18b",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "L3UVVXyye4VthqcO",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://v2.convertapi.com/convert/html/to/pdf",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer fvIQTBEW6OLV4smxw2UGtouR40XZqCYv"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "File",
+              "inputDataFieldName": "data"
+            },
+            {
+              "name": "StoreFile",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "8e8afa31-88fe-4f50-8126-1c374eb0eac7",
+      "name": "Convert HTML to PDF",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        944,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.Files[0].Url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "ee83835d-6510-400b-a4bc-c70414db9d92",
+      "name": "Download PDF from ConvertAPI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1168,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "name": "=Raport za poprzedni tydzień na dzień {{ $now.toFormat('dd/MM/yyyy') }}",
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "list",
+          "cachedResultName": "My Drive",
+          "cachedResultUrl": "https://drive.google.com/drive/my-drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "=https://drive.google.com/drive/folders/1dIZpZ-ZbZoKDNoPLMmcI7t1aB7CXsqES",
+          "mode": "url"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1424,
+        -160
+      ],
+      "id": "504ed4db-e41e-41cb-9b19-bee2efb7315e",
+      "name": "Upload file",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "OGuqybB3vJpx66kp",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "d422d973-2916-4d0c-88ac-24431579e8f1",
+      "name": "Loop Over Folders",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -1184,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const binaryData = await this.helpers.getBinaryDataBuffer(0, 'data');\nconst raw = binaryData.toString('utf8');\nreturn [{ json: { styles: JSON.parse(raw) } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2272,
+        144
+      ],
+      "id": "5afcc522-ad83-480c-b2f2-7f46c249c1f6",
+      "name": "Styles To JSON"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "https://drive.google.com/file/d/1rhNoi3Vz1TS7xy70hVVOTAk_6JM2DsHg/view?usp=drive_link",
+          "mode": "url"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -2480,
+        144
+      ],
+      "id": "50b4dcd2-0793-4367-8333-b3c3c2c2a26d",
+      "name": "Download Styles",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "OGuqybB3vJpx66kp",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const binaryData = await this.helpers.getBinaryDataBuffer(0, 'structure');\nconst raw = binaryData.toString('utf8');\nreturn [{ json: { structure: JSON.parse(raw) } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1856,
+        144
+      ],
+      "id": "4184914f-2277-4176-8203-f63fa1128938",
+      "name": "Structure To JSON"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "https://drive.google.com/file/d/14PT1WBXd3j8munycqZNBtZLHrm0eCfmI/view?usp=drive_link",
+          "mode": "url"
+        },
+        "options": {
+          "binaryPropertyName": "structure",
+          "fileName": "structure"
+        }
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -2064,
+        144
+      ],
+      "id": "b4236bfa-15c3-41a9-936a-100455309a28",
+      "name": "Download Structure",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "OGuqybB3vJpx66kp",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "claude-opus-4-6",
+          "mode": "list",
+          "cachedResultName": "Claude Opus 4.6"
+        },
+        "options": {
+          "maxTokensToSample": 16000
+        }
+      },
+      "id": "10fe69ce-76cd-4013-a510-71ef525470f9",
+      "name": "Report Generation Model1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.5,
+      "position": [
+        16,
+        -48
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "tbWdAXHt7Soar3yv",
+          "name": "Anthropic account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=,,{{ \"According to the number of given analyzed coffee origins (\" + JSON.stringify($('Aggregate Analysis Results').item.json.analysis) + \") check if all of the analyzed coffee origins and closing recap are inluded in this report: \" + $json.output + \". If complete PASS the report to the next node without any change. If not GENERATE THE MISSING PART of a comprehensive PDF report based on these roast analyses: \" + JSON.stringify($('Aggregate Analysis Results').item.json.analysis) + \". IMPORTANT: do not generate report already given to you once more, just generate the missing part of the report. START YOUR OUTPUT FROM THE POINT WHERE THE FIRST PART OF THE REPORT ENDED - IT HAS TO BE A REAL CONTINUATION. Format the report as HTML matching the style of the reference styles:\" + JSON.stringify($('Styles To JSON').item.json.styles) + \"and structure of the reference structure:\" + JSON.stringify($('Structure To JSON').item.json.structure) + \" . Use proper batch_id data. Include the rest of analysis data with clear, provided in reference visual formatting. Don't wrap your output in '```html ```'. YOUR RESPONSE SHOULD BE HTML ONLY. EVERY OUTPUT WHICH DOES NOT START AND END WITH HTML CODE IS A FAILED RESPONSE. EVERY CONTINUATION WHICH DOES NOT DIRECTLY START WITH THE LAST ELEMENT OF THE FIRST PART OF THE REPORT IS A FAILED RESPONSE.\" }}”,",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=You are a data visualization specialist creating professional reports for ToKawa specialty coffee roastery. Generate well-formatted HTML reports based on roast analysis data, matching the style and structure of reference templates provided.\n\nYou will receive data for several coffee origins.\nYou MUST finish processing ALL GIVEN origins before writing any conclusion.\n\nRules:\n- After each section, immediately continue to the next\n- Do NOT write \"In conclusion\" or any closing statement until the last origin is complete\n- Do not summarize or skip any fields\n- Do not stop mid-report for any reason\n\nCRITICAL OUTPUT RULE:\nYour response must begin with the very first character of HTML — either `<!DOCTYPE` or `<`.\nIf you find yourself about to write any word that is not an HTML tag, STOP and start over with `<`.\nNo exceptions. Not even one word before the HTML.",
+          "returnIntermediateSteps": true,
+          "passthroughBinaryImages": true,
+          "autoSaveHighlightedData": false
+        }
+      },
+      "id": "785ae724-b6bc-4579-be6c-a2de26e19cc7",
+      "name": "Continue Generating Report with AI",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -144,
+        -304
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "CDdgAhlKBMvr2EZm",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/CDdgAhlKBMvr2EZm",
+          "cachedResultName": "Delete Analysed Files"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "mimeType",
+              "displayName": "mimeType",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": true
+            },
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": true
+            },
+            {
+              "id": "standard",
+              "displayName": "standard",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        -720,
+        384
+      ],
+      "id": "0858dade-9a08-4970-b24e-0e3779477fd3",
+      "name": "Call 'Delete Analysed Files'"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "83830876-711a-47ea-9e9c-71ae8908d235",
+      "name": "Loop Over Folders To Delete Files",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -1184,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "folder1",
+              "name": "folders",
+              "type": "array",
+              "value": "[\"1qgpjQz-DETQZs_Klz3WNb-nMXZMMV58z\", \"1x9sLrwTYQnVpVI2yTVitTGMSKoLB8DyF\", \"1dQA2ETZIgpngjpf5Rmjzg3KBzqKdB24i\", \"14643B83YwDvZDgyiTb-B7MWAAEzcI-mn\", \"1yyE8aLT0XgYZ4PLhLifFzb3CpNcqxkwi\", \"1F5ctzqKnjSqKSEbVfIcl3hrQIv29kiEl\",  \"1ldq8WX-oP-jo9ZGoSWiHll2ou1VyOD9p\", \"1eJrlbA1dmr9sIUjZ-6G5er6SHjU9a1DG\",  \"14TiVmsY7aCoKuU6-ck0gaiiUZRI7rIyo\", \"1kBJDm-2k6O0eLJYvXcLQKb1fH7-QbIhZ\", \"1qG2VJsb4S9Ji76AL8u67vHBjeQxWpqqg\", \"18qW37AnUyIDBNLQ5xtGVQePNlzz8rtq4\",  \"1-uagFhK0E80iY8sNG_CeO7WOXw84Rswq\", \"1MqRurCT6klGNdv-9yHzFeoxOEIKbw2In\", \"1Ub8oWoiy5fgcM9QxKO_8CHj5ziNulgTs\", \"1qhrzQnHyAKIjpIdCBUjSFDv7wTpS8kgm\", \"1Auag2cJdGig6lpChsFuwCybCJl0vbpJ4\"]"
+            },
+            {
+              "id": "903d96ee-0134-4e5f-bedc-f9292e2d8d2a",
+              "name": "standards",
+              "value": "[\"1tibJ4dWSUYnzumK7Ho8w9C5vw2J08FnS\", \"1YO5VS62VEFF0WYgGNWph38IqO1AxUOR7\", \"1476nLElYpnCx2NOUvPFd4NDbdWVAN6AF\", \"10iASUjHxCYLGwnE-LO73AjDiNy4kaiMU\",  \"15gXxcyn6KZtvcSpV-cheio3VQP7wDMSP\", \"1wFVfbvNexGYhHNwjIpiRfFIH38KYiPUH\", \"1cTLebNQl1rkkro2YmjPgHY61b_gGPuWH\", \"1gfTiRDtSWx6yxRvk_ZZus2Rigj_P4cof\",  \"1fP0i0iNaUqfo5rlahf0Ioe-vuPXmbPTz\", \"1XbUw-TQ4VSufd-XYjd-EKwyFYybw7I63\",  \"1pZPJ0t4IL-hm9fEL71-rO6diHgYLJ8K4\", \"1GYxVhAbamgW1NUYyVcUJHRmvVoquEmAO\", \"1Pf3rPJkout_kCZgu3a2aqRB2UfvVnSPH\", \"1mW4Uvzc48Z-Rga2Y6FU1yZ732QrVtLT7\", \"1j7PaI6GtQeJOjF491O4kC9PA1T5qt4oW\", \"1DiQ0ws0sROmPAje6PbauR-k1axsl7jcT\", \"1YChp6hlPURo7HXfICXkjMfr7XcAN-NL0\"]",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "9afa058e-72db-40b7-a013-7b2c26ec4e22",
+      "name": "Define Folders and Standards",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1632,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "folders, standards",
+        "include": "allOtherFields",
+        "options": {}
+      },
+      "id": "f3d8d309-9f44-4a4b-8d6d-9ef0aba35175",
+      "name": "Split Folders and Standards Data Into Items",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -1408,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                2
+              ],
+              "triggerAtHour": 8,
+              "triggerAtMinute": 30
+            }
+          ]
+        }
+      },
+      "id": "06d250ee-6ff1-4556-876c-fa1f64c0bef1",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -2688,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "dataType": "binary",
+        "options": {}
+      },
+      "id": "e66eb8d8-a2e3-4f52-8813-cb33fee3335c",
+      "name": "Default Data Loader",
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "position": [
+        1600,
+        176
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "modelName": "embed-english-v3.0"
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsCohere",
+      "typeVersion": 1,
+      "position": [
+        1344,
+        192
+      ],
+      "id": "d95e74e0-2114-49cb-9a8c-e8271079afb0",
+      "name": "Embeddings Cohere",
+      "credentials": {
+        "cohereApi": {
+          "id": "o1osf71wGcFdnJIK",
+          "name": "Cohere account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const htmlData = $input.all().map((item) => item.json)[0];\nreturn [\n  {\n    json: {},\n    binary: {\n      data: {\n        data: Buffer.from(htmlData.html, \"utf8\"),\n        mimeType: \"text/html\",\n        fileExtension: \"html\",\n        fileName: \"report.html\",\n      },\n    },\n  },\n];\n"
+      },
+      "id": "10fd9f78-2572-420a-8e5c-e407ef7f85e3",
+      "name": "Convert HTML to File",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        720,
+        -160
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "queryString": "=mimeType='application/pdf' and '{{ $('Loop Over Folders').item.json.folders }}' in parents and trashed=false",
+        "returnAll": true,
+        "filter": {},
+        "options": {
+          "fields": [
+            "id",
+            "name",
+            "mimeType"
+          ]
+        }
+      },
+      "id": "eceb62af-5ccb-4dbb-aca0-c97058cf9f72",
+      "name": "Search Folder",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -960,
+        144
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "OGuqybB3vJpx66kp",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "queryString": "=mimeType='application/pdf' and '{{ $('Loop Over Folders To Delete Files').item.json.folders }}' in parents and trashed=false",
+        "returnAll": true,
+        "filter": {},
+        "options": {
+          "fields": [
+            "id",
+            "name",
+            "mimeType"
+          ]
+        }
+      },
+      "id": "394c6091-bc41-4065-a2b8-92ef7ca8e65a",
+      "name": "Search Folder 2",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -928,
+        384
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "OGuqybB3vJpx66kp",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "kUVriXPgRApckn4v",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/kUVriXPgRApckn4v",
+          "cachedResultName": "Compare PDFs"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "standard": "={{ $('Split Folders and Standards Data Into Items').item.json.standards }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "mimeType",
+              "displayName": "mimeType",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "standard",
+              "displayName": "standard",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        -720,
+        144
+      ],
+      "id": "a7c31a01-1f14-414d-a504-904b4e4ee8d7",
+      "name": "Call 'Compare PDFs'"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================================\n// n8n Code Node — \"Merge Report Fragments\"\n// Replaces the AI-based merge step entirely. Deterministic, \n// no LLM call, no risk of summarization/regeneration loss.\n// ============================================================\n\nconst fragmentA = $('Generate Report with AI').item.json.output;  // <-- adjust node name\nconst fragmentB = $json.output;\n\n// ---------- STRATEGY 1: Overlap detection (preferred) ----------\n// Handles the common case: B re-sends the same content A was cut off in,\n// then continues further. Finds the longest verbatim suffix-of-A / \n// prefix-of-B match and splices there — zero content loss, zero duplication.\nfunction findOverlap(a, b, maxCheck = 3000, minOverlap = 15) {\n  const checkLen = Math.min(a.length, b.length, maxCheck);\n  for (let len = checkLen; len > minOverlap; len--) {\n    if (a.slice(-len) === b.slice(0, len)) {\n      return len;\n    }\n  }\n  return 0;\n}\n\n// ---------- STRATEGY 1b: Whitespace-tolerant overlap ----------\n// Same idea as Strategy 1, but n8n/LLM outputs frequently differ in \n// trailing/leading whitespace at the exact seam (e.g. A ends with no \n// trailing newline, B starts with \"\\n\\n\" before the same word). A strict \n// byte-for-byte match misses this even though the content clearly overlaps.\n// This strips whitespace from the edges being compared, finds the overlap \n// on the trimmed text, then maps the cut point back to the ORIGINAL \n// (untrimmed) strings so no real content is lost.\nfunction findOverlapTrimmed(a, b, maxCheck = 3000, minOverlap = 10) {\n  const aTrimmedEnd = a.replace(/\\s+$/, '');      // a with trailing whitespace removed\n  const bTrimmedStart = b.replace(/^\\s+/, '');     // b with leading whitespace removed\n  const leadingWsLenB = b.length - bTrimmedStart.length;\n\n  const checkLen = Math.min(aTrimmedEnd.length, bTrimmedStart.length, maxCheck);\n  for (let len = checkLen; len > minOverlap; len--) {\n    if (aTrimmedEnd.slice(-len) === bTrimmedStart.slice(0, len)) {\n      // Found overlap on trimmed text. A is cut BEFORE the overlapping \n      // text (so the overlap itself is dropped from A's side); B must \n      // resume FROM THE START of the overlap (not after it), since B's \n      // copy is what actually supplies that text in the merged output.\n      const aCutIndex = aTrimmedEnd.length - len;\n      const bResumeIndex = leadingWsLenB; // start of B's trimmed content = start of the overlap\n      return { overlapLen: len, aCutIndex, bResumeIndex, leadingWsLenB };\n    }\n  }\n  return null;\n}\n\n// ---------- STRATEGY 2: Structural splice fallback ----------\n// Used only when no overlap exists. Cuts A at its last complete </table> \n// (a guaranteed-safe boundary — never mid-tag/mid-table), then searches \n// for a long (200+ char), UNIQUE anchor of A's post-cut text inside B to \n// find the correct resume point. Reports with repeating structure (e.g. \n// multiple origins sharing identical section headers) make short anchors \n// unreliable, so short/ambiguous matches are deliberately rejected rather \n// than guessed.\nfunction findSafeBoundaryInA(a) {\n  const lastTable = a.lastIndexOf('</table>');\n  return lastTable !== -1 ? lastTable + '</table>'.length : 0;\n}\n\nfunction findAnchorInB(a, cutAt, b) {\n  const afterCut = a.slice(cutAt, cutAt + 800).trim();\n  if (!afterCut) return { idx: -1, ambiguous: false };\n\n  const MIN_TRUSTED_ANCHOR = 200;\n  for (let len = Math.min(800, afterCut.length); len >= MIN_TRUSTED_ANCHOR; len -= 20) {\n    const anchor = afterCut.slice(0, len);\n    const firstIdx = b.indexOf(anchor);\n    if (firstIdx === -1) continue;\n    const secondIdx = b.indexOf(anchor, firstIdx + 1);\n    if (secondIdx === -1) {\n      return { idx: firstIdx, ambiguous: false };\n    }\n  }\n  return { idx: -1, ambiguous: true };\n}\n\nfunction mergeFragments(a, b) {\n  // ---------- STRATEGY 0: Identity check ----------\n  // If both fragments are identical (the AI passed the report through \n  // unchanged because it was already complete), return one copy as-is.\n  if (a === b) {\n    return {\n      merged: a,\n      strategy: 'identical-passthrough',\n      ok: true,\n      detail: 'Fragments are identical — returned one copy unchanged'\n    };\n  }\n\n  // Also catch near-identical with only whitespace differences\n  if (a.trim() === b.trim()) {\n    return {\n      merged: a.trim(),\n      strategy: 'identical-passthrough-trimmed',\n      ok: true,\n      detail: 'Fragments identical after trimming — returned one copy unchanged'\n    };\n  }\n\n  const overlap = findOverlap(a, b);\n  if (overlap > 0) {\n    return {\n      merged: a.slice(0, -overlap) + b,\n      strategy: 'overlap',\n      ok: true,\n      detail: `${overlap} chars overlap removed`\n    };\n  }\n\n  // Strict match failed — try whitespace-tolerant overlap before giving up.\n  const trimmedMatch = findOverlapTrimmed(a, b);\n  if (trimmedMatch) {\n    const cleanA = a.slice(0, trimmedMatch.aCutIndex);\n    const cleanB = b.slice(trimmedMatch.bResumeIndex);\n    return {\n      merged: cleanA + cleanB,\n      strategy: 'overlap-whitespace-tolerant',\n      ok: true,\n      detail: `${trimmedMatch.overlapLen} chars overlap removed ` +\n              `(ignoring ${trimmedMatch.leadingWsLenB} leading whitespace chars in B)`\n    };\n  }\n\n  // ---------- STRATEGY 3: Broken-tag trim + direct concat ----------\n  // Handles the case where A was cut off mid-tag (e.g. \"<hr class\" with \n  // no closing \">\") and B is a clean continuation — no overlap at all, \n  // just a broken dangling tag at the end of A that needs removing.\n  // Detection: if everything after A's last \">\" is only whitespace + \n  // start of an incomplete tag (contains \"<\" but no closing \">\"), we can \n  // safely strip it and concatenate B directly.\n  const lastGt = a.lastIndexOf('>');\n  if (lastGt !== -1) {\n    const trailingJunk = a.slice(lastGt + 1);\n    const isIncompleteTag = trailingJunk.includes('<') && !trailingJunk.includes('>');\n    const isWhitespaceOnly = trailingJunk.trim() === '';\n    if (isIncompleteTag || isWhitespaceOnly) {\n      const cleanA = a.slice(0, lastGt + 1);\n      return {\n        merged: cleanA + '\\n' + b,\n        strategy: 'broken-tag-trim',\n        ok: true,\n        detail: `Stripped broken trailing content from A: ${JSON.stringify(trailingJunk.trim().slice(0, 60))}, then appended B directly`\n      };\n    }\n\n    // ---------- STRATEGY 3b: Mid-content truncation ----------\n    // Handles the case where A was cut off mid-text-content after a valid\n    // closing tag — e.g. mid-HTML-entity (\"&midd\" where B starts with \"ot;\"),\n    // mid-word, or mid-number inside element text. The trailing junk has no \n    // '<' (so it's not a broken tag) and is not whitespace-only (so Strategy 3\n    // doesn't fire), but B correctly continues the same text stream.\n    // Detection: trailing content after last '>' is short plain text (no tags),\n    // and B's start either: (a) begins with the completion of a broken entity\n    // pattern, or (b) the trailing text + B start together form a recognizable \n    // pattern (entity, word, number).\n    // Safe heuristic: if trailingJunk is ≤80 chars of plain text with no tags,\n    // check if B starts with content that could plausibly continue it. We do \n    // this by checking if (trailingJunk + b's first ~100 chars) parses cleanly,\n    // specifically by verifying the seam produces no broken HTML entity.\n    const isShortPlainText = trailingJunk.length <= 80 && \n                             !trailingJunk.includes('<') && \n                             !trailingJunk.includes('>') &&\n                             trailingJunk.trim().length > 0;\n    if (isShortPlainText) {\n      // Check for broken HTML entity: trailingJunk ends with partial &xxx\n      const brokenEntityMatch = trailingJunk.match(/&[a-zA-Z#0-9]{0,8}$/);\n      if (brokenEntityMatch) {\n        // B should start with the entity completion — just concat\n        return {\n          merged: a + b,\n          strategy: 'broken-entity-concat',\n          ok: true,\n          detail: `A cut off mid-entity (${JSON.stringify(trailingJunk.trim().slice(-20))}), B continues directly`\n        };\n      }\n      // More general: any short plain-text tail after last '>' — concat directly\n      // since B is a continuation of the same text node\n      return {\n        merged: a + b,\n        strategy: 'mid-content-concat',\n        ok: true,\n        detail: `A cut off mid-content after last tag (${JSON.stringify(trailingJunk.trim().slice(0, 40))}), B continues directly`\n      };\n    }\n  }\n\n  const cutAt = findSafeBoundaryInA(a);\n  const { idx: resumeAt, ambiguous } = findAnchorInB(a, cutAt, b);\n\n  if (resumeAt === -1) {\n    const reason = ambiguous\n      ? 'Anchor text matched multiple locations in B — too ambiguous to auto-resolve safely'\n      : 'No overlap or anchor match found between fragments';\n    return {\n      merged: a + `\\n\\n<!-- MERGE WARNING: ${reason}. Fragment B appended as-is below — manual review required. -->\\n\\n` + b,\n      strategy: 'unsafe-concat',\n      ok: false,\n      detail: reason\n    };\n  }\n\n  const cleanA = a.slice(0, cutAt);\n  const cleanB = b.slice(resumeAt);\n  return {\n    merged: cleanA + '\\n\\n' + cleanB,\n    strategy: 'structural-splice',\n    ok: true,\n    detail: `cut A at table-end (pos ${cutAt}), resumed B at unique anchor match (pos ${resumeAt})`\n  };\n}\n\n// ---------- Run merge ----------\nconst result = mergeFragments(fragmentA, fragmentB);\n\n// ---------- Post-merge validation & auto-repair ----------\nfunction tagBalance(html, tag) {\n  const opens = (html.match(new RegExp(`<${tag}(?:\\\\s[^>]*)?>`, 'g')) || []).length;\n  const closes = (html.match(new RegExp(`</${tag}>`, 'g')) || []).length;\n  return { opens, closes, diff: opens - closes, balanced: opens === closes };\n}\n\nif (!result.ok) {\n  throw new Error(\n    `MERGE FAILED — manual review required. Reason: ${result.detail}. ` +\n    `Check the 'Generate Report with AI' and current node outputs directly.`\n  );\n}\n\n// Determine if the merged result is a complete HTML document or still a fragment.\n// If it has no </body> or </html>, it's incomplete — destined for another merge \n// pass. In that case we pass it through WITHOUT auto-repair or validation throws,\n// since any unclosed tags are expected and correct for a partial document.\nlet finalMerged = result.merged;\nconst isCompleteDocument = finalMerged.includes('</body>') || finalMerged.includes('</html>');\n\nif (isCompleteDocument) {\n  // Auto-repair: for any tag with MORE opens than closes, insert the missing \n  // closing tags before </body>. Safe because unclosed tags at end of a complete\n  // document are always outermost wrappers left open by AI truncation.\n  const tagsToRepair = ['td', 'tr', 'tbody', 'thead', 'table', 'div'];\n  for (const tag of tagsToRepair) {\n    const check = tagBalance(finalMerged, tag);\n    if (check.diff > 0) {\n      const missing = `</${tag}>\\n`.repeat(check.diff);\n      finalMerged = finalMerged.replace('</body>', missing + '</body>');\n    }\n  }\n\n  // Re-check after repair — if still unbalanced, something genuinely broke\n  const reChecks = ['div', 'table', 'tr', 'td', 'th', 'p', 'span'].map(t => ({\n    tag: t, ...tagBalance(finalMerged, t)\n  }));\n  const stillBroken = reChecks.filter(c => !c.balanced);\n  if (stillBroken.length > 0) {\n    const broken = stillBroken\n      .map(c => `${c.tag}: ${c.opens} open / ${c.closes} close (diff: ${c.diff})`)\n      .join(', ');\n    throw new Error(\n      `MERGE PRODUCED UNBALANCED HTML (strategy: ${result.strategy}). ` +\n      `Broken tags after auto-repair: ${broken}. Manual review required.`\n    );\n  }\n} \n// If incomplete (no </body>): pass through as-is for next merge cycle.\n// Unclosed tags are expected and intentional in a partial document.\n\n// ---------- Fix <title> metadata ----------\n// Always inject the current date into the <title> tag regardless of what\n// the AI generated. Uses the n8n execution timestamp — always available,\n// always correct — instead of trying to parse the HTML body, which fails\n// whenever the AI uses a different div class name for the date.\nconst now = new Date();\nconst months = ['January','February','March','April','May','June',\n                'July','August','September','October','November','December'];\nconst formattedDate = `${months[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()}`;\nconst newTitle = `<title>ToKawa Roast Analysis Report — ${formattedDate}</title>`;\n\nlet finalHtml = finalMerged.replace(/<title>[^<]*<\\/title>/, newTitle);\n\n// Safety net: if no <title> tag exists at all, insert one into <head>\nif (!finalHtml.includes('<title>')) {\n  finalHtml = finalHtml.replace('<head>', `<head>\\n${newTitle}`);\n}\n\nreturn [{\n  json: {\n    output: finalHtml,\n    _merge_strategy: result.strategy,\n    _merge_detail: result.detail\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        -304
+      ],
+      "id": "a4b42ccb-a09b-416e-a718-b4ba2f374bd2",
+      "name": "Merge Fragments"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Recursive Character Text Splitter": {
+      "ai_textSplitter": [
+        [
+          {
+            "node": "Default Data Loader",
+            "type": "ai_textSplitter",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Complete": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Analysis Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Analysis Results": {
+      "main": [
+        [
+          {
+            "node": "Generate Report with AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Report with AI": {
+      "main": [
+        [
+          {
+            "node": "Continue Generating Report with AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Report Generation Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Generate Report with AI",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate HTML Report": {
+      "main": [
+        [
+          {
+            "node": "Convert HTML to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert HTML to PDF": {
+      "main": [
+        [
+          {
+            "node": "Download PDF from ConvertAPI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download PDF from ConvertAPI": {
+      "main": [
+        [
+          {
+            "node": "Upload file",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Pinecone Vector Store",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send Report via Gmail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Folders": {
+      "main": [
+        [
+          {
+            "node": "Loop Complete",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Search Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Styles To JSON": {
+      "main": [
+        [
+          {
+            "node": "Download Structure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Styles": {
+      "main": [
+        [
+          {
+            "node": "Styles To JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structure To JSON": {
+      "main": [
+        [
+          {
+            "node": "Define Folders and Standards",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Structure": {
+      "main": [
+        [
+          {
+            "node": "Structure To JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload file": {
+      "main": [
+        []
+      ]
+    },
+    "Report Generation Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Continue Generating Report with AI",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Continue Generating Report with AI": {
+      "main": [
+        [
+          {
+            "node": "Merge Fragments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'Delete Analysed Files'": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Folders To Delete Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Folders To Delete Files": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Search Folder 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Define Folders and Standards": {
+      "main": [
+        [
+          {
+            "node": "Split Folders and Standards Data Into Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Folders and Standards Data Into Items": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Folders",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Loop Over Folders To Delete Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Download Styles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Default Data Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "Pinecone Vector Store",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Cohere": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Pinecone Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert HTML to File": {
+      "main": [
+        [
+          {
+            "node": "Convert HTML to PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Folder": {
+      "main": [
+        [
+          {
+            "node": "Call 'Compare PDFs'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Folder 2": {
+      "main": [
+        [
+          {
+            "node": "Call 'Delete Analysed Files'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'Compare PDFs'": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Folders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Fragments": {
+      "main": [
+        [
+          {
+            "node": "Generate HTML Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "74a6cf09-4d31-4269-85dd-9ab15ae2be6f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "7a01796333966a3620529315aa952d5aa65747b585c38da71e80c8905632ba26"
+  },
+  "nodeGroups": [],
+  "id": "CHIjUquWu6wDafPj",
+  "tags": []
+}
